@@ -10,7 +10,7 @@ import InterviewHistory from './pages/interviewHistory'
 import Pricing from './pages/Pricing'
 import InterviewReport from './pages/InterviewReport'
 
-export const ServerUrl  = "http://localhost:3000"
+export const ServerUrl = import.meta.env.VITE_BACKEND_URL || ""
 
 // ProtectedRoute component to handle auth redirects
 const ProtectedRoute = ({ children }) => {
@@ -24,11 +24,11 @@ const ProtectedRoute = ({ children }) => {
 function App() {
   const [loading, setLoading] = useState(true);
   const dispatch = useDispatch()
-  
-  useEffect(()=>{
+
+  useEffect(() => {
     const getUser = async () => {
       try {
-        const result = await axios.get(ServerUrl + "/api/user/current-user", {withCredentials:true})
+        const result = await axios.get(ServerUrl + "/api/user/current-user", { withCredentials: true })
         dispatch(setUserData(result.data))
       } catch (error) {
         console.log("Auth error, user not logged in", error)
@@ -38,7 +38,7 @@ function App() {
       }
     }
     getUser()
-  },[dispatch])
+  }, [dispatch])
 
   if (loading) {
     return <div className="min-h-screen flex items-center justify-center">Loading...</div>;
@@ -46,14 +46,14 @@ function App() {
 
   return (
     <Routes>
-      <Route path='/' element={<Home/>}/>
-      <Route path='/auth' element={<Auth/>}/>
-      <Route path='/pricing' element={<Pricing/>}/>
-      
+      <Route path='/' element={<Home />} />
+      <Route path='/auth' element={<Auth />} />
+      <Route path='/pricing' element={<Pricing />} />
+
       {/* Protected Routes */}
-      <Route path='/interview' element={<ProtectedRoute><InterviewPage/></ProtectedRoute>}/>
-      <Route path='/history' element={<ProtectedRoute><InterviewHistory/></ProtectedRoute>}/>
-      <Route path='/report/:id' element={<ProtectedRoute><InterviewReport/></ProtectedRoute>}/>
+      <Route path='/interview' element={<ProtectedRoute><InterviewPage /></ProtectedRoute>} />
+      <Route path='/history' element={<ProtectedRoute><InterviewHistory /></ProtectedRoute>} />
+      <Route path='/report/:id' element={<ProtectedRoute><InterviewReport /></ProtectedRoute>} />
     </Routes>
   )
 }
