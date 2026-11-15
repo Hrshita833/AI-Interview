@@ -35,7 +35,7 @@ app.use("/api/auth", authRouter)
 app.use("/api/user", userRouter)
 app.use("/api/interview", interviewRouter)
 app.use("/api/payment", paymentRouter)
-app.use(express.static(path.join(dirname, "public")));
+app.use(express.static(path.join(__dirname, "public")));
 
 app.get("/{*splat}", (req, res) => {
     res.sendFile(path.join(__dirname, "public", "index.html"));
