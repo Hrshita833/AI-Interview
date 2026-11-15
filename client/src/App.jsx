@@ -10,7 +10,7 @@ import InterviewHistory from './pages/interviewHistory'
 import Pricing from './pages/Pricing'
 import InterviewReport from './pages/InterviewReport'
 
-export const ServerUrl = import.meta.env.VITE_BACKEND_URL || ""
+export const ServerUrl = ""
 
 // ProtectedRoute component to handle auth redirects
 const ProtectedRoute = ({ children }) => {
