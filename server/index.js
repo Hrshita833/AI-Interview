@@ -22,7 +22,7 @@ const app = express();
 
 
 app.use(cors({
-    origin: ["http://localhost:5173", "https://smart-interview-agent2.onrender.com"],
+    origin: ["http://localhost:5173", "https://ai-interview-k24d.onrender.com"],
     credentials: true
 }))
 
