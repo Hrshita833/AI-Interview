@@ -21,7 +21,7 @@ export const askAi = async (messages) => {
         });
 
         const response = await ai.models.generateContent({
-            model: 'gemini-3.6-flash',
+            model: process.env.GEMINI_TEXT_MODEL || 'gemini-3.5-flash-lite',
             contents: userContent.trim(),
             config: {
                 systemInstruction: systemInstruction.trim() || undefined

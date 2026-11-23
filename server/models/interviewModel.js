@@ -32,6 +32,11 @@ const interviewSchema = new mongoose.Schema({
         enum:["HR" ,"Technical"],
         required:true
     },
+    gender:{
+        type:String,
+        enum:["male","female"],
+        default:"female"
+    },
     resumeText:{
      type:String
     },

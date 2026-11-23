@@ -18,6 +18,7 @@ function Step1SetUp({ onStart }) {
     const [role, setRole] = useState("");
     const [experience, setExperience] = useState("");
     const [mode, setMode] = useState("Technical");
+    const [gender, setGender] = useState("female");
     const [resumeFile, setResumeFile] = useState(null);
     const [loading, setLoading] = useState(false);
     const [projects, setProjects] = useState([]);
@@ -59,16 +60,6 @@ function Step1SetUp({ onStart }) {
     const trimmedExperience = experience.trim();
     const trimmedMode = mode.trim();
 
-    // 🔥 ADD LOG HERE
-    console.log("SENDING DATA 👉", {
-        role: trimmedRole,
-        experience: trimmedExperience,
-        mode: trimmedMode,
-        resumeText,
-        projects,
-        skills
-    });
-
     if (!trimmedRole || !trimmedExperience || !trimmedMode) {
         alert("Please fill all required fields properly");
         return;
@@ -82,6 +73,7 @@ function Step1SetUp({ onStart }) {
                 role: trimmedRole,
                 experience: trimmedExperience,
                 mode: trimmedMode,
+                gender,
                 resumeText,
                 projects,
                 skills
@@ -99,7 +91,7 @@ function Step1SetUp({ onStart }) {
         onStart(result.data);
 
     } catch (error) {
-        console.log("ERROR 👉", error.response?.data || error.message); // 🔥 ADD THIS
+        console.log("ERROR 👉", error.response?.data || error.message);
         setLoading(false);
     }
 
@@ -209,6 +201,33 @@ function Step1SetUp({ onStart }) {
 
                         </select>
 
+                        {/* Interviewer Gender Selector */}
+                        <div>
+                            <label className='text-sm text-gray-500 mb-2 block'>Interviewer Voice</label>
+                            <div className='flex gap-3'>
+                                <button
+                                    type="button"
+                                    onClick={() => setGender("female")}
+                                    className={`flex-1 py-3 rounded-xl border-2 font-semibold transition ${
+                                        gender === "female"
+                                            ? "border-green-500 bg-green-50 text-green-700"
+                                            : "border-gray-200 text-gray-500 hover:border-gray-300"
+                                    }`}>
+                                    👩 Priya (Female)
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={() => setGender("male")}
+                                    className={`flex-1 py-3 rounded-xl border-2 font-semibold transition ${
+                                        gender === "male"
+                                            ? "border-green-500 bg-green-50 text-green-700"
+                                            : "border-gray-200 text-gray-500 hover:border-gray-300"
+                                    }`}>
+                                    👨 Rahul (Male)
+                                </button>
+                            </div>
+                        </div>
+
                         {!analysisDone && (
                             <motion.div
                                 whileHover={{ scale: 1.02 }}
@@ -291,7 +310,7 @@ function Step1SetUp({ onStart }) {
                             whileHover={{ scale: 1.03 }}
                             whileTap={{ scale: 0.95 }}
                             className='w-full disabled:bg-gray-600 bg-green-600 hover:bg-green-700 text-white py-3 rounded-full text-lg font-semibold transition duration-300 shadow-md'>
-                            {loading ? "Staring...":"Start Interview"}
+                            {loading ? "Starting...":"Start Interview"}
 
 
                         </motion.button>

@@ -3,6 +3,7 @@ import * as pdfjsLib from "pdfjs-dist/legacy/build/pdf.mjs";
 import { askAi } from "../services/interviewAi.js";
 import User from "../models/userModel.js";
 import Interview from "../models/interviewModel.js";
+import ttsVoices from "../config/ttsConfig.js";
 
 
 
@@ -77,7 +78,6 @@ Return strictly JSON:
     try {
       parsed = JSON.parse(cleaned);
     } catch (err) {
-      //console.log("❌ AI RAW RESPONSE 👉", aiResponse);
       return res.status(500).json({
         message: "AI returned invalid JSON format"
       });
@@ -115,11 +115,11 @@ export const generateQuestion = async (req, res) => {
 
     console.log("BACKEND RECEIVED 👉", req.body);
 
-    let { role, experience, mode, resumeText, projects, skills } = req.body
+    let { role, experience, mode, resumeText, projects, skills, gender } = req.body
 
     role = role?.trim();
     experience = experience?.trim();
-    mode: mode?.trim() === "HR" ? "HR" : "Technical";
+    mode = mode?.trim() === "HR" ? "HR" : "Technical";
 
     if (!role || !experience || !mode) {
       return res.status(400).json({ message: "Role, Experience and Mode are required." })
@@ -147,6 +147,10 @@ export const generateQuestion = async (req, res) => {
 
     const safeResume = resumeText?.trim() || "None";
 
+    // Determine interviewer persona from gender
+    const safeGender = gender === "male" ? "male" : "female";
+    const persona = ttsVoices[safeGender];
+
     const userPrompt = `
     Role:${role}
     Experience:${experience}
@@ -163,17 +167,11 @@ export const generateQuestion = async (req, res) => {
     }
 
     const messages = [
-
       {
         role: "system",
-        content: `
-You are a real human interviewer conducting a professional interview.
-
-Speak in simple, natural English as if you are directly talking to the candidate.
-
-Generate exactly 5 interview questions.
-
-Strict Rules:
+        content: `You are ${persona.personaName}, a friendly senior interviewer at a tech company, in a real spoken conversation. Your reply will be converted to speech.
+- Speak like a real person: warm, natural, slightly informal Indian-English conversational tone. Mix in light fillers sparingly ('okay', 'so', 'alright', 'hmm, interesting').
+- Generate exactly 5 interview questions.
 - Each question must contain between 15 and 25 words.
 - Each question must be a single complete sentence.
 - Do NOT number them.
@@ -182,18 +180,19 @@ Strict Rules:
 - One question per line only.
 - Keep language simple and conversational.
 - Questions must feel practical and realistic.
+- Plain spoken text only. No markdown, bullets, emojis, numbering, or phrases like 'Question 1' or 'As an AI'.
 
 Difficulty progression:
-Question 1 → easy  
-Question 2 → easy  
-Question 3 → medium  
-Question 4 → medium  
-Question 5 → hard  
+Question 1 → easy
+Question 2 → easy
+Question 3 → medium
+Question 4 → medium
+Question 5 → hard
 
-Make questions based on the candidate’s role, experience,interviewMode, projects, skills, and resume details.
+Tailor questions to: role=${role}, level=${experience}, stack=${skillsText}, difficulty=progressive, type=${mode}.
+Make questions based on the candidate's role, experience, interviewMode, projects, skills, and resume details.
 `
-      }
-      ,
+      },
       {
         role: "user",
         content: userPrompt
@@ -233,6 +232,7 @@ Make questions based on the candidate’s role, experience,interviewMode, projec
       role,
       experience,
       mode,
+      gender: safeGender,
       resumeText: safeResume,
       questions: questionsArray.map((q, index) => ({
         question: q,
@@ -245,10 +245,12 @@ Make questions based on the candidate’s role, experience,interviewMode, projec
       interviewId: interview._id,
       creditsLeft: user.credits,
       userName: user.name,
-      questions: interview.questions
+      questions: interview.questions,
+      gender: safeGender,
+      personaName: persona.personaName,
     });
   } catch (error) {
-  console.log("ERROR 👉", error); // 🔥 ADD THIS
+  console.log("ERROR 👉", error);
   return res.status(500).json({
     message: "failed to create interview",
     error: error.message
