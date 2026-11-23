@@ -48,12 +48,21 @@ async function generateTtsAudio(text, gender) {
   const voice = ttsVoices[gender] || ttsVoices.female;
   const styledText = voice.stylePrefix + text;
 
-  const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+  const apiKey = process.env.GEMINI_API_KEY;
+  if (!apiKey) {
+    console.error("❌ GEMINI_API_KEY is not defined in environment variables!");
+    throw new Error("GEMINI_API_KEY is not configured on the server");
+  }
 
-  const models = [
+  const ai = new GoogleGenAI({ apiKey });
+
+  const candidateModels = [
     process.env.GEMINI_TTS_MODEL,
+    "gemini-3.8-flash-tts",
     process.env.GEMINI_TTS_FALLBACK_MODEL,
+    "gemini-3.1-flash-tts-preview",
   ].filter(Boolean);
+  const models = [...new Set(candidateModels)];
 
   let lastError = null;
 
