@@ -12,6 +12,8 @@ import axios from "axios"
 import { ServerUrl } from '../App';
 import { useDispatch, useSelector } from 'react-redux';
 import { setUserData } from '../redux/userSlice';
+import personas from '../config/personas';
+import { unlockAudio } from '../utils/audioUnlock';
 function Step1SetUp({ onStart }) {
     const {userData}= useSelector((state)=>state.user)
     const dispatch = useDispatch()
@@ -56,6 +58,9 @@ function Step1SetUp({ onStart }) {
     }
 
     const handleStart = async () => {
+    // Unlock mobile browser audio on user gesture
+    unlockAudio();
+
     const trimmedRole = role.trim();
     const trimmedExperience = experience.trim();
     const trimmedMode = mode.trim();
@@ -213,7 +218,7 @@ function Step1SetUp({ onStart }) {
                                             ? "border-green-500 bg-green-50 text-green-700"
                                             : "border-gray-200 text-gray-500 hover:border-gray-300"
                                     }`}>
-                                    👩 Priya (Female)
+                                    👩 {personas.female.name} (Female)
                                 </button>
                                 <button
                                     type="button"
@@ -223,7 +228,7 @@ function Step1SetUp({ onStart }) {
                                             ? "border-green-500 bg-green-50 text-green-700"
                                             : "border-gray-200 text-gray-500 hover:border-gray-300"
                                     }`}>
-                                    👨 Rahul (Male)
+                                    👨 {personas.male.name} (Male)
                                 </button>
                             </div>
                         </div>

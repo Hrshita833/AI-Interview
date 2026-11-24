@@ -306,7 +306,7 @@ sequenceDiagram
     Step2->>AudioElem: audio.play()
     AudioElem->>Video: onplay -> play avatar video
     AudioElem->>SpeechRec: Stop/disable mic during interviewer speech
-    AudioElem-->>Candidate: Speaks question with natural human voice (Priya/Rahul)
+    AudioElem-->>Candidate: Speaks question with natural human voice (Ananya/Arjun)
     Step2->>TTSAPI: Prefetch audio for NEXT question in background
     AudioElem->>Video: onended -> pause video on resting frame
     AudioElem->>SpeechRec: Auto-enable mic listening
@@ -326,7 +326,7 @@ sequenceDiagram
 ### Avatar Lipsync, Audio Prefetch & State Machine
 
 1. **Persona & Voice Selection:**
-   - Candidate chooses **Priya (Female)** or **Rahul (Male)** on setup.
+   - Candidate chooses **Ananya (Female)** or **Arjun (Male)** on setup.
    - Persona configures:
      - Avatar video source: `female-ai.mp4` vs `male-ai.mp4`.
      - TTS voice profile: `Kore` vs `Puck`.

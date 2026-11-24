@@ -240,8 +240,8 @@ Uploads a candidate's PDF resume, extracts the raw text using `pdfjs-dist`, and 
 Generates 5 tailored interview questions based on the candidate's chosen role, experience, mode (Technical or HR), voice persona (`male` or `female`), and parsed resume data.
 * **Credit Requirement:** Minimum 50 credits required. 50 credits are deducted upon successful generation.
 * **Persona Mapping:**
-  - `gender: "female"` ➡️ Persona: **Priya**, Voice: **Kore**
-  - `gender: "male"` ➡️ Persona: **Rahul**, Voice: **Puck**
+  - `gender: "female"` ➡️ Persona: **Ananya**, Voice: **Kore**
+  - `gender: "male"` ➡️ Persona: **Arjun**, Voice: **Puck**
 * **Question Progression:**
   - Question 1: **Easy** (Time Limit: 60 seconds)
   - Question 2: **Easy** (Time Limit: 60 seconds)
@@ -273,7 +273,7 @@ Generates 5 tailored interview questions based on the candidate's chosen role, e
   "creditsLeft": 950,
   "userName": "Jane Doe",
   "gender": "female",
-  "personaName": "Priya",
+  "personaName": "Ananya",
   "questions": [
     {
       "question": "So tell me, how does the virtual DOM work in React, and why is it useful?",

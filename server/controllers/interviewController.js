@@ -3,7 +3,7 @@ import * as pdfjsLib from "pdfjs-dist/legacy/build/pdf.mjs";
 import { askAi } from "../services/interviewAi.js";
 import User from "../models/userModel.js";
 import Interview from "../models/interviewModel.js";
-import ttsVoices from "../config/ttsConfig.js";
+import personas from "../config/ttsConfig.js";
 
 
 
@@ -149,7 +149,7 @@ export const generateQuestion = async (req, res) => {
 
     // Determine interviewer persona from gender
     const safeGender = gender === "male" ? "male" : "female";
-    const persona = ttsVoices[safeGender];
+    const persona = personas[safeGender] || personas.female;
 
     const userPrompt = `
     Role:${role}
@@ -169,7 +169,7 @@ export const generateQuestion = async (req, res) => {
     const messages = [
       {
         role: "system",
-        content: `You are ${persona.personaName}, a friendly senior interviewer at a tech company, in a real spoken conversation. Your reply will be converted to speech.
+        content: `You are ${persona.name}, a friendly senior interviewer at a tech company, in a real spoken conversation. Your reply will be converted to speech.
 - Speak like a real person: warm, natural, slightly informal Indian-English conversational tone. Mix in light fillers sparingly ('okay', 'so', 'alright', 'hmm, interesting').
 - Generate exactly 5 interview questions.
 - Each question must contain between 15 and 25 words.
@@ -247,7 +247,7 @@ Make questions based on the candidate's role, experience, interviewMode, project
       userName: user.name,
       questions: interview.questions,
       gender: safeGender,
-      personaName: persona.personaName,
+      personaName: persona.name,
     });
   } catch (error) {
   console.log("ERROR 👉", error);

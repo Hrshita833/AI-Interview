@@ -25,11 +25,11 @@ echo   TTS Endpoint Test
 echo ========================================
 echo.
 
-echo --- Test 1: Female voice (Priya / Kore) ---
+echo --- Test 1: Female voice (Ananya / Kore) ---
 curl -s -o test-female.wav -w "HTTP %%{http_code} | Size: %%{size_download} bytes\n" -X POST "%BASE_URL%/api/mock-interview/tts" -H "Content-Type: application/json" -b "token=%TOKEN%" -d "{\"text\": \"So tell me, what got you interested in this role?\", \"gender\": \"female\"}"
 echo.
 
-echo --- Test 2: Male voice (Rahul / Puck) ---
+echo --- Test 2: Male voice (Arjun / Puck) ---
 curl -s -o test-male.wav -w "HTTP %%{http_code} | Size: %%{size_download} bytes\n" -X POST "%BASE_URL%/api/mock-interview/tts" -H "Content-Type: application/json" -b "token=%TOKEN%" -d "{\"text\": \"Alright, can you walk me through one project you are proud of?\", \"gender\": \"male\"}"
 echo.
 

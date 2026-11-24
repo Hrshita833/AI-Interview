@@ -34,7 +34,7 @@ Job seekers often struggle with interview anxiety, unstructured answers, poor ti
 
 ### The Solution:
 Smart Interview AI delivers a real-world interview simulation that:
-- **Speaks like a real human interviewer:** Replaces robotic browser voices with Google's cutting-edge **Gemini Neural TTS** (`gemini-3.8-flash-tts` with `gemini-3.1-flash-tts-preview` fallback). Offers authentic personas—**Priya** (warm senior female interviewer, Kore voice) and **Rahul** (relaxed, confident male interviewer, Puck voice)—with realistic Indian-English conversational pacing, small natural pauses, and conversational fillers.
+- **Speaks like a real human interviewer:** Replaces robotic browser voices with Google's cutting-edge **Gemini Neural TTS** (`gemini-3.8-flash-tts` with `gemini-3.1-flash-tts-preview` fallback). Offers authentic personas—**Ananya** (warm senior female interviewer, Kore voice) and **Arjun** (relaxed, confident male interviewer, Puck voice)—with realistic Indian-English conversational pacing, small natural pauses, and conversational fillers.
 - **Syncs animated AI video avatars:** Synchronizes male and female video avatars with live audio playback, pausing on neutral frames when candidate responds.
 - **Extracts structured resume insights:** Parses experience, projects, and skills directly from the candidate's PDF resume using `pdfjs-dist` and Gemini AI.
 - **Generates progressive, role-tailored questions:** Generates 5 progressive questions (Easy ➡️ Medium ➡️ Hard) tailored to candidate's stack, level, and interview mode (Technical vs HR).
@@ -130,8 +130,8 @@ Candidates configure their interview session in Step 1:
   - **Technical Mode:** Deep technical questions on programming concepts, architecture, performance, and best practices.
   - **HR Mode:** Behavioral questions, conflict resolution, leadership, situational judgment, and workplace culture.
 - **Interviewer Voice & Persona Selection:**
-  - 👩 **Priya (Female):** Voice `Kore` — warm, conversational, friendly senior interviewer.
-  - 👨 **Rahul (Male):** Voice `Puck` — relaxed, confident, conversational interviewer.
+  - 👩 **Ananya (Female):** Voice `Kore` — warm, conversational, friendly senior interviewer.
+  - 👨 **Arjun (Male):** Voice `Puck` — relaxed, confident, conversational interviewer.
   - Persona selection persists across the entire interview session, dictating the video avatar, TTS voice, and system prompt personality.
 - **Credit Validation:** System verifies that the user possesses at least **50 credits** before initializing the interview.
 
@@ -254,7 +254,7 @@ sequenceDiagram
         Server-->>UI: Pre-fill role, experience, projects, skills
     end
 
-    User->>UI: Selects Role, Experience, Mode & Voice (Priya/Rahul)
+    User->>UI: Selects Role, Experience, Mode & Voice (Ananya/Arjun)
     UI->>Server: POST /api/interview/generate-questions { role, mode, experience, gender }
     Server->>DB: Check credits >= 50 and deduct 50 credits
     Server->>GeminiText: Generate 5 questions (persona system prompt)
@@ -408,14 +408,14 @@ smart-interview-AI/
     ├── src/
     │   ├── assets/
     │   │   ├── videos/
-    │   │   │   ├── female-ai.mp4 # Video avatar for Priya (female voice)
-    │   │   │   └── male-ai.mp4   # Video avatar for Rahul (male voice)
+    │   │   │   ├── female-ai.mp4 # Video avatar for Ananya (female voice)
+    │   │   │   └── male-ai.mp4   # Video avatar for Arjun (male voice)
     │   │   └── *.png             # Feature illustrations and mode badges
     │   ├── components/
     │   │   ├── Navbar.jsx        # Navigation bar, credit counter, user dropdown
     │   │   ├── Footer.jsx        # Application footer
     │   │   ├── AuthModel.jsx     # Google sign-in popup dialog
-    │   │   ├── Step1SetUp.jsx    # Role setup, resume uploader, Priya/Rahul selector
+    │   │   ├── Step1SetUp.jsx    # Role setup, resume uploader, Ananya/Arjun selector
     │   │   ├── Setp2Interview.jsx# Main interview chamber with Gemini TTS & audio player
     │   │   ├── Step3Report.jsx   # Analytics dashboard, Recharts graph, PDF generator
     │   │   └── Timer.jsx         # Circular animated question countdown timer

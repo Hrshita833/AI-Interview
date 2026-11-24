@@ -9,8 +9,8 @@ A **production-ready AI Mock Interview Platform** built using the MERN stack (Mo
 ### 🎙️ Human-like Voice Interview (Gemini Neural TTS)
 * **Replaces Robotic Speech:** Uses Google's **Gemini Neural TTS** (`gemini-3.8-flash-tts` with `gemini-3.1-flash-tts-preview` fallback).
 * **Authentic Personas:**
-  - 👩 **Priya (Female):** Voice `Kore` — warm, conversational, friendly senior interviewer.
-  - 👨 **Rahul (Male):** Voice `Puck` — relaxed, confident, natural cadence with conversational fillers.
+  - 👩 **Ananya (Female):** Voice `Kore` — warm, conversational, friendly senior interviewer.
+  - 👨 **Arjun (Male):** Voice `Puck` — relaxed, confident, natural cadence with conversational fillers.
 * **Synchronized Video Avatars:** Male and female video avatars lip-sync/animate while the interviewer speaks and pause on a resting frame when listening.
 * **Zero-Latency Prefetching:** The upcoming question's audio is prefetched in the background while the candidate answers.
 * **Auto-Muting:** Candidate's microphone is muted during audio playback to prevent echo and false transcription.
@@ -124,7 +124,7 @@ npm run dev
 
 1. User logs in with Google OAuth.
 2. (Optional) Uploads resume PDF — AI extracts skills and projects.
-3. Selects role, experience, mode (Technical/HR), and interviewer voice persona (Priya / Rahul).
+3. Selects role, experience, mode (Technical/HR), and interviewer voice persona (Ananya / Arjun).
 4. AI generates 5 progressive questions and conducts the interview with realistic Gemini Neural TTS speech.
 5. User answers via voice (STT) or typing; AI provides verbal feedback after each turn.
 6. Detailed performance analytics and downloadable PDF reports are generated upon completion.
