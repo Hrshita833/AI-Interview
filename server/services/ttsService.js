@@ -33,12 +33,23 @@ const audioCache = new SimpleLruCache(100);
 function cacheKey(text, voiceName) {
   return crypto
     .createHash("sha256")
-    .update(`${voiceName}:${text}`)
+    .update(`v3:${voiceName}:${text}`)
     .digest("hex");
 }
 
-// ── Smooth 30ms fade-out + 200ms trailing silence to remove clicks/pops ──
-function applyFadeOutAndSilence(pcmBuffer) {
+/**
+ * ── Comprehensive Audio Smoothing Engine ──
+ * Eliminates all glitch/pop/click sounds at both start and end:
+ * 1. 60ms Leading Digital Silence (1440 samples @ 24kHz = 2880 bytes):
+ *    Gives mobile phone hardware DAC time to wake up without clipping the start of speech.
+ * 2. 25ms Smooth Linear Fade-In (600 samples @ 24kHz):
+ *    Smoothly ramps speech amplitude from 0 to eliminate initial DC offset click.
+ * 3. 30ms Smooth Linear Fade-Out (720 samples @ 24kHz):
+ *    Smoothly ramps speech amplitude down to 0 to prevent end truncation click.
+ * 4. 200ms Trailing Digital Silence (4800 samples @ 24kHz = 9600 bytes):
+ *    Allows DAC to settle before the HTML5 audio element ends.
+ */
+function applyAudioSmoothing(pcmBuffer) {
   // Ensure even byte length for 16-bit PCM samples (2 bytes per sample)
   let safeBuffer = pcmBuffer;
   if (safeBuffer.length % 2 !== 0) {
@@ -46,17 +57,14 @@ function applyFadeOutAndSilence(pcmBuffer) {
   }
 
   const sampleCount = safeBuffer.length / 2;
-  const fadeSamples = Math.min(720, sampleCount); // 30ms @ 24kHz = 720 samples
-  const fadeStart = sampleCount - fadeSamples;
+  const processedPcm = Buffer.from(safeBuffer); // clean copy to avoid Buffer pool byteOffset issues
 
-  // Make an explicit buffer copy to avoid Buffer pool byteOffset issues
-  const processedPcm = Buffer.from(safeBuffer);
-
-  for (let i = 0; i < fadeSamples; i++) {
-    const sampleIndex = fadeStart + i;
-    const byteOffset = sampleIndex * 2;
+  // 1. Smooth 25ms Fade-In (600 samples)
+  const fadeInSamples = Math.min(600, Math.floor(sampleCount / 2));
+  for (let i = 0; i < fadeInSamples; i++) {
+    const byteOffset = i * 2;
     const originalSample = processedPcm.readInt16LE(byteOffset);
-    const fadeFactor = 1.0 - i / fadeSamples;
+    const fadeFactor = i / fadeInSamples;
     const fadedSample = Math.round(originalSample * fadeFactor);
     processedPcm.writeInt16LE(
       Math.max(-32768, Math.min(32767, fadedSample)),
@@ -64,10 +72,28 @@ function applyFadeOutAndSilence(pcmBuffer) {
     );
   }
 
-  // 200ms trailing silence @ 24kHz = 4800 samples = 9600 bytes
-  const silenceBuffer = Buffer.alloc(4800 * 2, 0);
+  // 2. Smooth 30ms Fade-Out (720 samples)
+  const fadeOutSamples = Math.min(720, Math.floor(sampleCount / 2));
+  const fadeStart = sampleCount - fadeOutSamples;
+  for (let i = 0; i < fadeOutSamples; i++) {
+    const sampleIndex = fadeStart + i;
+    const byteOffset = sampleIndex * 2;
+    const originalSample = processedPcm.readInt16LE(byteOffset);
+    const fadeFactor = 1.0 - i / fadeOutSamples;
+    const fadedSample = Math.round(originalSample * fadeFactor);
+    processedPcm.writeInt16LE(
+      Math.max(-32768, Math.min(32767, fadedSample)),
+      byteOffset
+    );
+  }
 
-  return Buffer.concat([processedPcm, silenceBuffer]);
+  // 3. 60ms Leading Silence (1440 samples = 2880 bytes)
+  const leadingSilence = Buffer.alloc(1440 * 2, 0);
+
+  // 4. 200ms Trailing Silence (4800 samples = 9600 bytes)
+  const trailingSilence = Buffer.alloc(4800 * 2, 0);
+
+  return Buffer.concat([leadingSilence, processedPcm, trailingSilence]);
 }
 
 // ── WAV header writer (PCM 24 kHz, 16-bit, mono) ──
@@ -154,7 +180,14 @@ async function callGeminiTts(ai, model, cleanText, persona) {
 
 // ── Core TTS generation (with fallback model & structured retry) ──
 async function generateTtsAudio(text, gender) {
-  const cleanText = text.trim();
+  // Sanitize text for TTS: remove markdown symbols, bullets, asterisks, and numbering
+  const cleanText = text
+    .trim()
+    .replace(/[*_~`]/g, "")
+    .replace(/^(?:Q\d+[:.]?|\d+[\.\)]|[-•*])\s*/i, "")
+    .replace(/^["'`]+|["'`]+$/g, "")
+    .trim();
+
   const persona = personas[gender] || personas.female;
   const key = cacheKey(cleanText, persona.voiceName);
   const cached = audioCache.get(key);
@@ -199,7 +232,7 @@ async function generateTtsAudio(text, gender) {
       }
 
       const rawPcm = Buffer.concat(audioBuffers);
-      const cleanPcm = applyFadeOutAndSilence(rawPcm);
+      const cleanPcm = applyAudioSmoothing(rawPcm);
       const wavBuffer = writeWavHeader(cleanPcm);
 
       audioCache.set(key, wavBuffer);
@@ -238,7 +271,7 @@ async function generateTtsAudio(text, gender) {
           if (retryAudioBuffers.length === 0) throw new Error("No audio on retry");
 
           const rawPcm = Buffer.concat(retryAudioBuffers);
-          const cleanPcm = applyFadeOutAndSilence(rawPcm);
+          const cleanPcm = applyAudioSmoothing(rawPcm);
           const wavBuffer = writeWavHeader(cleanPcm);
 
           audioCache.set(key, wavBuffer);

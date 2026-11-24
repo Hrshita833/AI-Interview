@@ -169,18 +169,15 @@ export const generateQuestion = async (req, res) => {
     const messages = [
       {
         role: "system",
-        content: `You are ${persona.name}, a friendly senior interviewer at a tech company, in a real spoken conversation. Your reply will be converted to speech.
+        content: `You are ${persona.name}, a friendly senior interviewer at a tech company, in a real spoken conversation. Your reply will be converted directly to speech by a text-to-speech engine.
 - Speak like a real person: warm, natural, slightly informal Indian-English conversational tone. Mix in light fillers sparingly ('okay', 'so', 'alright', 'hmm, interesting').
 - Generate exactly 5 interview questions.
 - Each question must contain between 15 and 25 words.
-- Each question must be a single complete sentence.
-- Do NOT number them.
-- Do NOT add explanations.
-- Do NOT add extra text before or after.
+- Each question must be a single complete spoken sentence.
+- Plain spoken text only. Strictly NO markdown, NO asterisks, NO quotes, NO bullet points, NO emojis, and NO numbering (never write '1.', '2.', 'Q1:', or 'Question 1:').
+- Do NOT add explanations or extra text.
 - One question per line only.
-- Keep language simple and conversational.
-- Questions must feel practical and realistic.
-- Plain spoken text only. No markdown, bullets, emojis, numbering, or phrases like 'Question 1' or 'As an AI'.
+- Questions must feel practical, realistic, and conversational.
 
 Difficulty progression:
 Question 1 → easy
@@ -213,7 +210,16 @@ Make questions based on the candidate's role, experience, interviewMode, project
 
     const questionsArray = aiResponse
       .split("\n")
-      .map(q => q.trim())
+      .map(q => {
+        let clean = q.trim();
+        // Remove markdown formatting (*, _, ~, `)
+        clean = clean.replace(/[*_~`]/g, "");
+        // Remove leading numbering like "1.", "1)", "Q1:", "Question 1:", "- ", "• "
+        clean = clean.replace(/^(?:question\s*\d+[:.]?|q\d+[:.]?|\d+[\.\)]|[-•*])\s*/i, "");
+        // Remove wrapping quotes
+        clean = clean.replace(/^["'`]+|["'`]+$/g, "");
+        return clean.trim();
+      })
       .filter(q => q.length > 0)
       .slice(0, 5);
 
@@ -361,16 +367,22 @@ Answer: ${answer}
 
     const parsed = JSON.parse(cleaned);
 
+    let cleanFeedback = (parsed.feedback || "Good attempt. Keep it up!").trim();
+    cleanFeedback = cleanFeedback
+      .replace(/[*_~`]/g, "")
+      .replace(/^["'`]+|["'`]+$/g, "")
+      .trim();
+
     question.answer = answer;
     question.confidence = parsed.confidence;
     question.communication = parsed.communication;
     question.correctness = parsed.correctness;
     question.score = parsed.finalScore;
-    question.feedback = parsed.feedback;
+    question.feedback = cleanFeedback;
     await interview.save();
 
 
-    return res.status(200).json({feedback :parsed.feedback})
+    return res.status(200).json({ feedback: cleanFeedback })
   } catch (error) {
     return res.status(500).json({message:`failed to submit answer ${error}`})
 

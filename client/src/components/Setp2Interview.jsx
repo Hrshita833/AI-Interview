@@ -232,6 +232,8 @@ function Step2Interview({ interviewData, onFinish }) {
     return new Promise(async (resolve) => {
       stopAllAudio();
       stopListening();
+      // Allow previous audio engine cycle to clear before loading new buffer
+      await new Promise((r) => setTimeout(r, 40));
 
       setTtsLoading(true);
       setShowRetryVoice(false);
@@ -466,12 +468,7 @@ function Step2Interview({ interviewData, onFinish }) {
     const runIntro = async () => {
       if (isIntroPhase) {
         await speakText(
-          `Hi ${userName}, I am ${personaName}. It's great to meet you today. I hope you're feeling confident and ready.`
-        );
-        if (isCancelled) return;
-
-        await speakText(
-          "I'll ask you a few questions. Take your time, and let's begin."
+          `Hi ${userName}, I am ${personaName}. It's great to meet you today, and I hope you're feeling confident. I'll ask you a few questions, so take your time and let's begin.`
         );
         if (isCancelled) return;
 
