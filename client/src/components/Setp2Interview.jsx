@@ -1,12 +1,14 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import Timer from './Timer';
+import DebugOverlay from './DebugOverlay';
 import { motion } from "motion/react";
 import { FaMicrophone, FaMicrophoneSlash, FaKeyboard, FaVolumeUp } from "react-icons/fa";
 import axios from "axios";
 import { ServerUrl } from '../App';
 import { BsArrowRight } from 'react-icons/bs';
 import personas from '../config/personas';
-import { unlockAudio } from '../utils/audioUnlock';
+import { unlockAudio, getAudioContext } from '../utils/audioUnlock';
+import { logDebugEvent, validateWavHeader } from '../utils/debugLogger';
 
 function Step2Interview({ interviewData, onFinish }) {
   const { interviewId, questions, userName, gender = "female" } = interviewData;
@@ -41,8 +43,12 @@ function Step2Interview({ interviewData, onFinish }) {
   // Audio / TTS state
   const [isAIPlaying, setIsAIPlaying] = useState(false);
   const [ttsLoading, setTtsLoading] = useState(false);
-  const [voiceNotice, setVoiceNotice] = useState(""); // Specific non-blocking message
+  const [voiceNotice, setVoiceNotice] = useState(""); // Specific reason code
   const [showRetryVoice, setShowRetryVoice] = useState(false);
+  const [audioContextState, setAudioContextState] = useState(() => {
+    const ctx = getAudioContext();
+    return ctx ? ctx.state : "unsupported";
+  });
 
   const videoRef = useRef(null);
   const audioRef = useRef(null);
@@ -54,6 +60,25 @@ function Step2Interview({ interviewData, onFinish }) {
 
   const currentQuestion = questions[currentIndex];
   const videoSource = currentPersona.videoSrc;
+
+  // Track AudioContext state changes
+  useEffect(() => {
+    const updateCtxState = () => {
+      const ctx = getAudioContext();
+      if (ctx) {
+        setAudioContextState(ctx.state);
+        logDebugEvent("context", "AudioContext state check", ctx.state);
+      }
+    };
+    updateCtxState();
+    const interval = setInterval(updateCtxState, 5000);
+    return () => clearInterval(interval);
+  }, []);
+
+  // Log answer mode at mount
+  useEffect(() => {
+    logDebugEvent("mode", "active answer mode initialized", answerMode);
+  }, []);
 
   /* ============================================================
    *  Audio Cleanup & Pipeline Management (Single Pipeline)
@@ -88,6 +113,7 @@ function Step2Interview({ interviewData, onFinish }) {
   const speakWithBrowserVoice = useCallback((text) => {
     return new Promise((resolve) => {
       if (!window.speechSynthesis) {
+        logDebugEvent("audio", "speechSynthesis unsupported", "No browser speech engine");
         resolve();
         return;
       }
@@ -108,18 +134,21 @@ function Step2Interview({ interviewData, onFinish }) {
         utterance.pitch = safeGender === "female" ? 1.05 : 0.95;
 
         utterance.onstart = () => {
+          logDebugEvent("audio", "browser speech started", `Persona: ${personaName}`);
           setIsAIPlaying(true);
           videoRef.current?.play().catch(() => {});
         };
 
         utterance.onend = () => {
+          logDebugEvent("audio", "browser speech ended", "Finished utterance");
           videoRef.current?.pause();
           if (videoRef.current) videoRef.current.currentTime = 0;
           setIsAIPlaying(false);
           setTimeout(resolve, 200);
         };
 
-        utterance.onerror = () => {
+        utterance.onerror = (e) => {
+          logDebugEvent("audio", "browser speech error", e.error || "unknown");
           setIsAIPlaying(false);
           resolve();
         };
@@ -130,31 +159,61 @@ function Step2Interview({ interviewData, onFinish }) {
         resolve();
       }
     });
-  }, [safeGender]);
+  }, [safeGender, personaName]);
 
   /* ============================================================
-   *  TTS Fetch with 15s Timeout, Caching & Fallback
+   *  TTS Fetch with 15s Timeout, Header Validation & Caching
    * ============================================================ */
   const fetchTtsAudio = useCallback(async (text) => {
     const cacheKey = `${safeGender}:${text}`;
     if (prefetchCache.current[cacheKey]) {
+      logDebugEvent("tts", "cache hit", `Loaded from client memory cache (${cacheKey.slice(0, 30)}...)`);
       return prefetchCache.current[cacheKey];
     }
+
+    logDebugEvent("tts", "request started", {
+      textLength: text.length,
+      snippet: text.slice(0, 50) + "...",
+      gender: safeGender,
+      persona: personaName,
+    });
 
     const response = await axios.post(
       ServerUrl + "/api/mock-interview/tts",
       { text, gender: safeGender },
       {
         withCredentials: true,
-        responseType: "blob",
-        timeout: 15000, // 15 second timeout for Render slow starts
+        responseType: "arraybuffer", // Retrieve raw arraybuffer for immediate header verification
+        timeout: 15000,
       }
     );
 
-    const blobUrl = URL.createObjectURL(response.data);
+    const arrayBuffer = response.data;
+    const contentType = response.headers["content-type"] || "audio/wav";
+    const byteSize = arrayBuffer.byteLength;
+
+    logDebugEvent("tts", "response received", {
+      status: response.status,
+      contentType,
+      byteSize: `${byteSize} bytes`,
+    });
+
+    // Validate WAV header
+    const headerResult = validateWavHeader(arrayBuffer);
+    logDebugEvent("wav", "header check", headerResult.reason, {
+      sampleRate: headerResult.sampleRate,
+      channels: headerResult.numChannels,
+      bits: headerResult.bitsPerSample,
+      dataSize: headerResult.dataSize,
+      actualTotal: headerResult.actualTotalSize,
+      valid: headerResult.valid,
+    });
+
+    const blob = new Blob([arrayBuffer], { type: "audio/wav" });
+    const blobUrl = URL.createObjectURL(blob);
     prefetchCache.current[cacheKey] = blobUrl;
     return blobUrl;
-  }, [safeGender]);
+  }, [safeGender, personaName]);
 
   // Prefetch NEXT question's TTS audio silently while candidate answers
   useEffect(() => {
@@ -189,7 +248,18 @@ function Step2Interview({ interviewData, onFinish }) {
         const audio = audioRef.current;
         audio.src = audioUrl;
 
+        audio.onloadedmetadata = () => {
+          logDebugEvent("audio", "loadedmetadata", {
+            duration: Number(audio.duration?.toFixed(2)) || "unknown",
+          });
+        };
+
+        audio.oncanplay = () => {
+          logDebugEvent("audio", "canplay", "Audio ready for playback");
+        };
+
         audio.onplay = () => {
+          logDebugEvent("audio", "play event", "Gemini TTS playback active");
           setIsAIPlaying(true);
           setTtsLoading(false);
           setVoiceNotice("");
@@ -197,6 +267,7 @@ function Step2Interview({ interviewData, onFinish }) {
         };
 
         audio.onended = () => {
+          logDebugEvent("audio", "ended", "Gemini TTS playback finished");
           videoRef.current?.pause();
           if (videoRef.current) videoRef.current.currentTime = 0;
           setIsAIPlaying(false);
@@ -207,30 +278,49 @@ function Step2Interview({ interviewData, onFinish }) {
         };
 
         audio.onerror = async () => {
+          const mediaError = audio.error;
+          logDebugEvent("audio", "HTML5 Audio error", {
+            code: mediaError?.code,
+            message: mediaError?.message || "Media playback error",
+          });
+
           setTtsLoading(false);
           setShowRetryVoice(true);
-          setVoiceNotice("Voice audio failed, using browser voice");
+          setVoiceNotice(`Voice unavailable (decode error ${mediaError?.code || "unknown"})`);
           await speakWithBrowserVoice(text);
           setSubtitle("");
           resolve();
         };
 
-        await audio.play();
-        playSucceeded = true;
+        const playPromise = audio.play();
+        if (playPromise !== undefined) {
+          await playPromise;
+          logDebugEvent("audio", "play resolved", "Native audio.play() succeeded");
+          playSucceeded = true;
+        }
       } catch (err) {
-        console.warn("Gemini TTS playback error:", err?.response?.data || err?.message || err);
+        logDebugEvent("audio", "play rejected / TTS failed", {
+          name: err?.name || "Error",
+          message: err?.message,
+          status: err?.response?.status,
+        });
+
         setTtsLoading(false);
         setShowRetryVoice(true);
 
         const status = err?.response?.status;
         if (status === 429) {
-          setVoiceNotice("Voice rate-limit reached, using fallback voice");
+          setVoiceNotice("Voice unavailable (429 quota limit reached - using browser voice)");
         } else if (err?.name === "NotAllowedError") {
-          setVoiceNotice("Tap screen to enable audio");
+          setVoiceNotice("Voice unavailable (autoplay blocked, tap screen to enable)");
         } else if (err?.code === "ECONNABORTED" || /timeout/i.test(err?.message || "")) {
-          setVoiceNotice("Network timeout, using fallback voice");
+          setVoiceNotice("Voice unavailable (network timeout - using browser voice)");
+        } else if (status === 404) {
+          setVoiceNotice("Voice unavailable (404 model not found - using browser voice)");
+        } else if (status) {
+          setVoiceNotice(`Voice unavailable (server HTTP ${status} - using browser voice)`);
         } else {
-          setVoiceNotice("Using fallback interviewer voice");
+          setVoiceNotice("Voice unavailable (using fallback voice)");
         }
 
         // Clean fallback to browser voice so the interview keeps going
@@ -254,6 +344,7 @@ function Step2Interview({ interviewData, onFinish }) {
     if (recognitionRef.current) {
       try {
         recognitionRef.current.stop();
+        logDebugEvent("mic", "SpeechRecognition stopped", "Manual or programmatic stop");
       } catch (e) {}
     }
   }, []);
@@ -281,6 +372,7 @@ function Step2Interview({ interviewData, onFinish }) {
     recognition.onstart = () => {
       setIsListening(true);
       setMicError("");
+      logDebugEvent("mic", "SpeechRecognition started", "Listening for candidate speech");
     };
 
     recognition.onresult = (event) => {
@@ -296,15 +388,16 @@ function Step2Interview({ interviewData, onFinish }) {
       }
 
       if (finalChunk) {
+        logDebugEvent("mic", "SpeechRecognition final chunk", finalChunk.trim());
         setAnswer((prev) => (prev ? prev.trim() + " " : "") + finalChunk.trim());
       }
       setInterimText(interim);
     };
 
     recognition.onerror = (event) => {
-      console.warn("Speech recognition error:", event.error);
+      logDebugEvent("mic", "SpeechRecognition error", { error: event.error, message: event.message });
       if (event.error === "not-allowed" || event.error === "service-not-allowed") {
-        setMicError("Microphone permission denied. Please allow mic access in browser settings.");
+        setMicError("Microphone permission denied. Allow mic access in browser settings or switch to Text answer mode.");
         shouldListenRef.current = false;
         setIsListening(false);
       } else if (event.error === "no-speech") {
@@ -316,6 +409,8 @@ function Step2Interview({ interviewData, onFinish }) {
 
     recognition.onend = () => {
       setInterimText("");
+      logDebugEvent("mic", "SpeechRecognition turn ended", `Restart count: ${restartCountRef.current}`);
+
       // Controlled auto-restart with a 350ms delay to avoid Android beep loops
       if (shouldListenRef.current && !isAIPlaying && restartCountRef.current < 25) {
         restartCountRef.current += 1;
@@ -340,6 +435,7 @@ function Step2Interview({ interviewData, onFinish }) {
     try {
       recognition.start();
     } catch (e) {
+      logDebugEvent("mic", "recognition.start() threw", e.message);
       setIsListening(false);
     }
   }, [hasSpeechRecognition, isAIPlaying]);
@@ -355,6 +451,7 @@ function Step2Interview({ interviewData, onFinish }) {
   const handleModeChange = (mode) => {
     setAnswerMode(mode);
     localStorage.setItem("interviewAnswerMode", mode);
+    logDebugEvent("mode", "Answer mode switched", mode);
     if (mode === "text") {
       stopListening();
     }
@@ -500,6 +597,7 @@ function Step2Interview({ interviewData, onFinish }) {
       // Clear cached audio for current question to force re-fetch
       const cacheKey = `${safeGender}:${currentQuestion.question}`;
       delete prefetchCache.current[cacheKey];
+      logDebugEvent("tts", "manual retry triggered", `Question ${currentIndex + 1}`);
       speakText(currentQuestion.question);
     }
   };
@@ -530,6 +628,9 @@ function Step2Interview({ interviewData, onFinish }) {
       onClick={unlockAudio}
       className='min-h-screen bg-linear-to-br from-emerald-50 via-white to-teal-100 flex items-center justify-center p-4 sm:p-6'
     >
+      {/* Diagnostic Overlay visible only when ?debug=1 is in URL */}
+      <DebugOverlay currentMode={answerMode} audioContextState={audioContextState} />
+
       <div className='w-full max-w-350 min-h-[80vh] bg-white rounded-3xl shadow-2xl border border-gray-200 flex flex-col lg:flex-row overflow-hidden'>
         {/* Left pane: Video Avatar + Timer + Status */}
         <div className='w-full lg:w-[35%] bg-white flex flex-col items-center p-6 space-y-6 border-r border-gray-200'>
@@ -561,10 +662,10 @@ function Step2Interview({ interviewData, onFinish }) {
             </div>
           )}
 
-          {/* Voice notice / Fallback notification */}
+          {/* Voice notice / Fallback notification with explicit reason */}
           {voiceNotice && (
             <div className='w-full max-w-md bg-amber-50 border border-amber-200 rounded-xl p-3 shadow-sm flex items-center justify-between text-xs text-amber-800'>
-              <span>{voiceNotice}</span>
+              <span className='font-medium'>{voiceNotice}</span>
               {showRetryVoice && (
                 <button
                   onClick={retryVoice}

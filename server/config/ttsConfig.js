@@ -14,16 +14,14 @@ const personas = {
     name: "Ananya",
     voiceName: "Kore",
     avatarSrc: "/assets/female-ai-B01REilp.mp4",
-    stylePrefix:
-      "Say this warmly and naturally, like a friendly senior interviewer on a call, with a calm, conversational pace: ",
+    style: "warm, friendly, conversational, calm pace",
   },
   male: {
     gender: "male",
     name: "Arjun",
     voiceName: "Puck",
     avatarSrc: "/assets/male-ai-XFH2LA02.mp4",
-    stylePrefix:
-      "Say this in a relaxed, confident, friendly tone, like a real interviewer on a call, natural pace with small pauses: ",
+    style: "relaxed, confident, conversational, friendly tone",
   },
 };
 
